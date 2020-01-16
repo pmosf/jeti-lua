@@ -1,0 +1,33 @@
+{
+  "default":"en",
+  "en":{
+    "appName":"ModelData",
+	"wingspan":"Wingspan",
+	"weigth":"Weigth",
+	"cgLoc":"CG Location",
+	"ctrlThrow":"Control Throw",
+	"throwAileronUp":"Aileron Up",
+	"throwAileronDown":"Aileron Down",
+	"throwElevatorUp":"Elevator Up",
+	"throwElevatorDown":"Elevator Down",
+	"rudder": "Rudder",
+	"batCapacity": "Capacity",
+	"engineIgnMotor": "Engine Ignition / Motor",
+	"auxBatName": "Use"
+  },
+  "fr":{
+    "appName":"ModelData",
+	"wingspan":"Envergure",
+	"weigth":"Poids",
+	"cgLoc":"Position CG",
+	"ctrlThrow":"Débattements",
+	"throwAileronUp":"Aileron Haut",
+	"throwAileronDown":"Aileron Bas",
+	"throwElevatorUp":"Profondeur Haut",
+	"throwElevatorDown":"Profondeur Bas",
+	"rudder": "Dérive",
+	"batCapacity": "Capacité",
+	"engineIgnMotor": "Moteur",
+	"auxBatName": "Usage"
+  }
+}

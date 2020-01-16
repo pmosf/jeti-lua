@@ -1,0 +1,40 @@
+{
+  "default":"en",
+  "en":{
+    "appName":"Dashboard",
+    "labelGeneralSettings":"General",
+    "cellCount":"Number of cells",
+    "batteryTyp":"Battery type",
+    "batteryCapacity":"Capacity (mAh)",
+    "voltageDisplay":"voltage display",
+    "singleCell":"single cell",
+    "totalBattery":"Battery pack",
+    "sensorSettingsBatt1":"Battery #1 Sensor IDs",
+    "sensorSettingsBatt2":"Battery #2 Sensor IDs",
+	"sensorSettingsTempId":"Temperature Sensor ID",
+    "sensor_V":"voltage",
+    "sensor_A":"current",
+    "sensor_mAh":"capacity",
+    "labelAlarm":"Alarm settings",
+    "alarmValue":"Alarm threshold (%)",
+    "voiceFile":"Voicefile"
+  },
+  "fr":{
+    "appName":"Tableau de bord",
+    "labelGeneralSettings":"Parametres",
+    "cellCount":"Nombre d'elements (S)",
+    "batteryTyp":"Type batterie",
+    "batteryCapacity":"Capacite (mAh)",
+    "voltageDisplay":"Affichage tension",
+    "singleCell":"element",
+    "totalBattery":"pack",
+    "sensorSettingsBatt1":"Capteurs Batterie 1",
+    "sensorSettingsBatt2":"Capteurs Batterie 2",
+    "sensor_V":"capteur tension",
+    "sensor_A":"capteur courant",
+    "sensor_mAh":"capteur capacite",
+    "labelAlarm":"Parametres alarme",
+    "alarmValue":"seuil alarme (%)",
+    "voiceFile":"son"
+  }
+}
