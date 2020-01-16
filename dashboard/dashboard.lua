@@ -14,7 +14,6 @@ local dateNow
 local actualConfigFormId = 1
 
 -- central box variables
-local playDone = false
 local cbVoltageSensor1, cbCurrentSensor1, cbCapacitySensor1 = {}, {}, {}
 local cbVoltageSensor2, cbCurrentSensor2, cbCapacitySensor2 = {}, {}, {}
 local cbTempSensor = {}
