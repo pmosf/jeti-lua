@@ -18,7 +18,7 @@ local cbVoltageSensor1, cbCurrentSensor1, cbCapacitySensor1 = {}, {}, {}
 local cbVoltageSensor2, cbCurrentSensor2, cbCapacitySensor2 = {}, {}, {}
 local cbTempSensor = {}
 local cbVoltage, cbCurrent, cbCapacity, cbCapacityPerCent, cbTemp = {0, 0}, {0, 0}, {0, 0}, {-1, -1}, 0
-local cbBatCellCount, cbBatCap, cbAlarmVal, cbAlarmFile = 0, 0, 0, false
+local cbBatCellCount, cbBatCap = 0, 0
 local lastVolt1, lastVolt2 = 0, 0
 local volt1Reset, volt2Reset = 0, 0
 local cbBatType
@@ -30,7 +30,7 @@ local txTelemetry
 local ignitionSwitch
 local spswVoltageSensor, spswCurrentSensor, spswCapacitySensor, spswRpmSensor, spswTempSensor = {}, {}, {}, {}, {}
 local spswVoltage, spswCurrent, spswCapacity, spswRpm, spswTemp, spswCapacityPerCent = 0, 0, 0, 0, 0, -1
-local spswBatCellCount, spswBatCap, spswAlarmVal, spswAlarmFile = 0, 0, 0, false
+local spswBatCellCount, spswBatCap = 0, 0
 local spswBatType
 
 -- PBS-T250 variables
@@ -542,25 +542,7 @@ local function configForm1()
 		cbCapacitySensor2[3] = value
 		system.pSave("cbCapacitySensor2", cbCapacitySensor2)
 		end)
-    
-    -- Alarm settings
-    form.addRow(1)
-    form.addLabel({label=lang.labelAlarm,font=FONT_BOLD})
-    
-    form.addRow(2)
-    form.addLabel({label="threshold",width=220})
-    form.addIntbox(cbAlarmVal,0,99,0,0,1,function(value)
-		cbAlarmVal = value
-		system.pSave("cbAlarmVal", cbAlarmVal)
-		end)
-    
-    form.addRow(2)
-    form.addLabel({label="sound file"})
-    form.addAudioFilebox(cbAlarmFile,function(value)
-		cbAlarmFile = value
-		system.pSave("cbAlarmFile", cbAlarmFile)
-		end)
-    
+
     form.addRow(1)
     form.addLabel({label="v"..appVersion.." ",font=FONT_MINI,alignRight=true})
 	
@@ -1031,8 +1013,6 @@ local function init(code1)
     cbBatCellCount = system.pLoad("cbBatCellCount", 0)
     cbBatType = system.pLoad("cbBatType", 0)
     cbBatCap = system.pLoad("cbBatCap", 0)
-    cbAlarmVal = system.pLoad("cbAlarmVal", 0)
-    cbAlarmFile = system.pLoad("cbAlarmFile",  "...")
 	
 	timerSecInitialValue = system.pLoad("timerSecInitialValue", 0)
 	timerMinInitialValue = system.pLoad("timerMinInitialValue", 10)
@@ -1048,8 +1028,6 @@ local function init(code1)
 	spswBatCellCount = system.pLoad("spswBatCellCount", 0)
     spswBatType = system.pLoad("spswBatType", 0)
     spswBatCap = system.pLoad("spswBatCap", 0)
-    spswAlarmVal = system.pLoad("spswAlarmVal", 0)
-    spswAlarmFile = system.pLoad("spswAlarmFile",  "...")
 	
 	pbsSensor = system.pLoad("pbsSensor", {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}})
 	
