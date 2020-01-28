@@ -4,7 +4,9 @@ collectgarbage()
 local appFileName = "dashboard"
 local appVersion = "1.0"
 
-local DEBUG = false
+local isEmulator = false
+
+local deviceType
 
 ----------------------------------------------------------------------
 -- variables
@@ -29,15 +31,20 @@ local txTelemetry
 -- sparkswitch variables
 local ignitionSwitch
 local spswVoltageSensor, spswCurrentSensor, spswCapacitySensor, spswRpmSensor, spswTempSensor = {}, {}, {}, {}, {}
-local spswVoltage, spswCurrent, spswCapacity, spswRpm, spswTemp, spswCapacityPerCent = 0, 0, 0, 0, 0, -1
+local spswVoltage, spswCurrent, spswCapacity, spswRpm, spswTemp, spswCapacityPerCent = 0, 0, 0, -1, -128, -1
 local spswBatCellCount, spswBatCap = 0, 0
 local spswBatType
 
 -- PBS-T250 variables
-local pbsTempValue = {0, 0, 0, 0, 0}
+local pbsEn
+local pbsEnForm
+local pbsTempValue = {-128, -128, -128, -128, -128}
+local pbsTempMaxValue = {-128, -128, -128, -128, -128}
 local pbsSensor = {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}}
 
 -- air pressure
+local airPressureEn
+local airPressureEnForm
 local airPressure = 0
 local airPressureSensor = {}
 local airPressureNominalValue
@@ -254,7 +261,7 @@ local function rxBox(x, y)
 	local txtYOffset = 20
 	local txtYOffsetInc = 12
 	
-	if (DEBUG) then
+	if (isEmulator) then
 		txTelemetry.rx1Voltage = 5.5
 		txTelemetry.rx1Percent = 98
 		txTelemetry.RSSI[1] = 30
@@ -313,13 +320,13 @@ end
 
 local function engineBox(x, y)
 	
-	if (DEBUG) then
+	if (isEmulator) then
 		spswVoltage = 7.2
 		spswCurrent = 0.12
 		spswCapacity = 1300
 		spswCapacityPerCent = 90
 		spswTemp = 22
-		spswRpm = 0
+		spswRpm = 1800
 	end
 	
 	-- draw box
@@ -330,15 +337,18 @@ local function engineBox(x, y)
 	lcd.drawText(5, 73, "Engine", FONT_BOLD)
 	
 	local txtXOffset = 7
-	local txtYOffset = 93
-	local txtYOffsetInc = 12
+	local txtYOffset = 95
+	local txtYOffsetInc = 18
 	
 	-- draw engine telemetry values
-	lcd.drawText(txtXOffset, txtYOffset, string.format("RPM: %d", spswRpm), FONT_MINI)
-	txtYOffset = txtYOffset + txtYOffsetInc
-	lcd.drawText(txtXOffset, txtYOffset, string.format("Temp: %d°C", spswTemp), FONT_MINI)
-	txtYOffset = txtYOffset + txtYOffsetInc
-	lcd.drawText(txtXOffset, txtYOffset, string.format("Temp °C: %d,%d,%d,%d,%d", pbsTempValue[1], pbsTempValue[2], pbsTempValue[3], pbsTempValue[4], pbsTempValue[5]), FONT_MINI)
+	if (spswRpm > -1) then
+		lcd.drawText(txtXOffset, txtYOffset, string.format("RPM: %d", spswRpm))
+	end
+	
+	if (spswTemp > -128) then
+		txtYOffset = txtYOffset + txtYOffsetInc
+		lcd.drawText(txtXOffset, txtYOffset, string.format("Temp: %d°C", spswTemp))
+	end
 	
 	-- draw battery indicator
 	txtXOffset = 265
@@ -358,18 +368,20 @@ local function engineBox(x, y)
 	lcd.setColor(0, 0, 0)
 	
 	-- draw timer
-	txtXOffset = 110
-	txtYOffset = 78
+	txtXOffset = 317 / 2 - lcd.getTextWidth(FONT_MAXI, "00:00") / 2
+	txtYOffset = y + 65 / 2 - lcd.getTextHeight(FONT_MAXI) / 2
 	lcd.drawText(txtXOffset, txtYOffset, string.format("%02d:%02d", timerMin, timerSec), FONT_MAXI)
 	
 	-- ignition status
-	txtYOffset = txtYOffset + 38
+	txtYOffset = txtYOffset + lcd.getTextHeight(FONT_MAXI) - lcd.getTextHeight(FONT_NORMAL) / 2
 	local ignitionSwStatus = system.getInputsVal(ignitionSwitch)
 	if (ignitionSwStatus == -1) then
 		lcd.setColor(200, 0, 0)
+		txtXOffset = 317 / 2 - lcd.getTextWidth(FONT_NORMAL, "Ignition OFF") / 2
 		lcd.drawText(txtXOffset, txtYOffset, "Ignition OFF")
 	else
 		lcd.setColor(0, 200, 0)
+		txtXOffset = 317 / 2 - lcd.getTextWidth(FONT_NORMAL, "Ignition ON") / 2
 		lcd.drawText(txtXOffset, txtYOffset, "Ignition ON")
 	end
 	lcd.setColor(0, 0, 0)
@@ -385,9 +397,9 @@ local function airPressureBox(x, y, sizeX, sizeY)
 	local yCenterBox = 0
 	
 	-- draw title box
-	lcd.drawText(x + 6, y + (sizeY - lcd.getTextHeight(FONT_NORMAL, "Air Pressure")) / 2, "Air Pressure", FONT_BOLD)
+	lcd.drawText(x + 6, y + (sizeY - lcd.getTextHeight(FONT_NORMAL)) / 2, "Air Pressure", FONT_BOLD)
 	
-	if (DEBUG) then
+	if (isEmulator) then
 		airPressure = 300
 		airPressureWarnThresholdPerCent = 80
 		airPressureCriticalThresholdPerCent = 50
@@ -397,8 +409,8 @@ local function airPressureBox(x, y, sizeX, sizeY)
 	horBarChart(x + 120, y + (sizeY - 22) / 2, (airPressure / airPressureNominalValue) * 100, airPressureWarnThresholdPerCent, airPressureCriticalThresholdPerCent)
 	
 	-- draw pressure value
-	if (airPressure ~= -1) then
-		lcd.drawText(x + 220, y + (sizeY - lcd.getTextHeight(FONT_NORMAL, "kPa")) / 2, string.format("%d kPa", airPressure), FONT_NORMAL)
+	if (airPressure ~= -128) then
+		lcd.drawText(x + 220, y + (sizeY - lcd.getTextHeight(FONT_NORMAL)) / 2, string.format("%d kPa", airPressure), FONT_NORMAL)
 	end
 	
 	collectgarbage()
@@ -408,6 +420,25 @@ local function pbsTempBox(x, y, sizeX, sizeY)
 	-- draw box
 	lcd.drawRectangle(x, y, sizeX, sizeY, 7)
 	lcd.drawRectangle(x + 1, y + 1, sizeX - 2, sizeY - 2, 6)
+	
+	-- draw title box
+	lcd.drawText(x + 6, y, "PBS-T250", FONT_BOLD)
+	
+	if (isEmulator) then
+		pbsTempValue = {80, 90, 100, 92, 110}
+		pbsTempMaxValue = {150, 140, 120, 160, 115}
+	end
+	
+	local txtXOffset = x + 15
+	local txtYOffset = y + lcd.getTextHeight(FONT_NORMAL) + 2
+	
+	for i = 1, 5, 1 do
+		if (pbsTempValue[i] ~= -128) then
+			lcd.drawText(txtXOffset, txtYOffset, string.format("%d°C", pbsTempMaxValue[i]), FONT_MINI)
+			lcd.drawText(txtXOffset, txtYOffset + lcd.getTextHeight(FONT_MINI), string.format("%d°C", pbsTempValue[i]))
+			txtXOffset = txtXOffset + lcd.getTextWidth(FONT_NORMAL, "XXXXX°C")
+		end
+	end
 	
 	collectgarbage()
 end
@@ -421,7 +452,15 @@ local function telemetryForm1(width,height)
 end
 
 local function telemetryForm2(width, height)
-	airPressureBox(1, 1, 317, 36)
+	local x, y = 1, 1
+	if (pbsEn) then
+		pbsTempBox(x, y, 317, 60)
+		y = y + 61
+	end
+	if (airPressureEn) then
+		airPressureBox(x, y, 317, 36)
+		y = y + 37
+	end
 end
 
 ----------------------------------------------------------------------
@@ -657,20 +696,31 @@ local function configForm2()
 		system.pSave("spswTempSensor", spswTempSensor)
 		end)
 		
+	-- pbs sensors
 	form.addRow(1)
     form.addLabel({label="PBS Sensor IDs",font=FONT_BOLD})
 	
-	-- pbs sensors
-	for i = 1, 5, 1 do
-		form.addRow(2)
-		form.addLabel({label = "Temperature #"..i, width = 220})
-		form.addSelectbox(sensList, pbsSensor[i][3], true, function(value)
-		pbsSensor[i][1] = sensorsAvailable[value].id
-		pbsSensor[i][2] = sensorsAvailable[value].param
-		pbsSensor[i][3] = value
-		print(string.format("pbsSensor[%d]: %d", i, pbsSensor[i]))
-		system.pSave("pbsSensor", pbsSensor)
+	form.addRow(2)
+    form.addLabel({label = "Enabled"})
+	pbsEnForm = form.addCheckbox(pbsEn, function(value)
+		pbsEn = not pbsEn
+		system.pSave("pbsEn", pbsEn and 1 or 0)
+		form.setValue(pbsEnForm, pbsEn)
+		form.reinit(2)
 		end)
+	
+	if (pbsEn) then
+		for i = 1, 5, 1 do
+			form.addRow(2)
+			form.addLabel({label = "Probe #"..i, width = 220})
+			form.addSelectbox(sensList, pbsSensor[i][3], true, function(value)
+			pbsSensor[i][1] = sensorsAvailable[value].id
+			pbsSensor[i][2] = sensorsAvailable[value].param
+			pbsSensor[i][3] = value
+			print(string.format("pbsSensor[%d]: %d", i, pbsSensor[i]))
+			system.pSave("pbsSensor", pbsSensor)
+			end)
+		end
 	end
 
 	collectgarbage()
@@ -733,38 +783,49 @@ local function configForm4()
     form.addLabel({label = "Air Pressure", font = FONT_BOLD})
 	
 	form.addRow(2)
-    form.addLabel({label = "Sensor"})
-    form.addSelectbox(sensList, airPressureSensor[3], true, function(value)
-		airPressureSensor[1] = sensorsAvailable[value].id
-		airPressureSensor[2] = sensorsAvailable[value].param
-		airPressureSensor[3] = value
-		system.pSave("airPressureSensor", airPressureSensor)
+    form.addLabel({label = "Enabled"})
+	airPressureEnForm = form.addCheckbox(airPressureEn, function(value)
+		airPressureEn = not airPressureEn
+		system.pSave("airPressureEn", airPressureEn and 1 or 0)
+		form.setValue(airPressureEnForm, airPressureEn)
+		form.reinit(4)
 		end)
-		
-	form.addRow(3)
-	form.addLabel({label="Nominal Value (kPa)", width = 220})
-	form.addIntbox(airPressureNominalValue, 0, 1024, 10, 0, 1, function(value)
-		airPressureNominalValue = value
-		airPressureWarnThresholdPerCent = airPressureWarnThreshold / airPressureNominalValue * 100
-		airPressureCriticalThresholdPerCent = airPressureCriticalThreshold / airPressureNominalValue * 100
-		system.pSave("airPressureNomVal", airPressureNominalValue)
-		end)
-		
-	form.addRow(3)
-	form.addLabel({label="Warning Threshold", width = 220})
-	form.addIntbox(airPressureWarnThreshold, 0, 2048, 10, 0, 1, function(value)
-		airPressureWarnThreshold = value
-		airPressureWarnThresholdPerCent = airPressureWarnThreshold / airPressureNominalValue * 100
-		system.pSave("airPressureWarnTh", airPressureWarnThreshold)
-		end)
-		
-	form.addRow(3)
-	form.addLabel({label="Critical Threshold", width = 220})
-	form.addIntbox(airPressureCriticalThreshold, 0, 2048, 10, 0, 1, function(value)
-		airPressureCriticalThreshold = value
-		airPressureCriticalThresholdPerCent = airPressureCriticalThreshold / airPressureNominalValue * 100
-		system.pSave("airPressureCritTh", airPressureCriticalThreshold)
-		end)
+	
+	if (airPressureEn) then
+		form.addRow(2)
+		form.addLabel({label = "Sensor"})
+		form.addSelectbox(sensList, airPressureSensor[3], true, function(value)
+			airPressureSensor[1] = sensorsAvailable[value].id
+			airPressureSensor[2] = sensorsAvailable[value].param
+			airPressureSensor[3] = value
+			system.pSave("airPressureSensor", airPressureSensor)
+			end)
+			
+		form.addRow(3)
+		form.addLabel({label="Nominal Value (kPa)", width = 220})
+		form.addIntbox(airPressureNominalValue, 0, 1024, 10, 0, 1, function(value)
+			airPressureNominalValue = value
+			airPressureWarnThresholdPerCent = airPressureWarnThreshold / airPressureNominalValue * 100
+			airPressureCriticalThresholdPerCent = airPressureCriticalThreshold / airPressureNominalValue * 100
+			system.pSave("airPressureNomVal", airPressureNominalValue)
+			end)
+			
+		form.addRow(3)
+		form.addLabel({label="Warning Threshold", width = 220})
+		form.addIntbox(airPressureWarnThreshold, 0, 2048, 10, 0, 1, function(value)
+			airPressureWarnThreshold = value
+			airPressureWarnThresholdPerCent = airPressureWarnThreshold / airPressureNominalValue * 100
+			system.pSave("airPressureWarnTh", airPressureWarnThreshold)
+			end)
+			
+		form.addRow(3)
+		form.addLabel({label="Critical Threshold", width = 220})
+		form.addIntbox(airPressureCriticalThreshold, 0, 2048, 10, 0, 1, function(value)
+			airPressureCriticalThreshold = value
+			airPressureCriticalThresholdPerCent = airPressureCriticalThreshold / airPressureNominalValue * 100
+			system.pSave("airPressureCritTh", airPressureCriticalThreshold)
+			end)
+	end
 	
 	collectgarbage()
 end
@@ -951,31 +1012,42 @@ local function loop()
 	-- sparkswitch temperature
 	sensor = system.getSensorValueByID(spswTempSensor[1], spswTempSensor[2])
     if(sensor and sensor.valid) then
-        spswTemp = sensor.value 
+        spswTemp = sensor.value
+	else
+		spswTemp = -128
     end
 	
 	-- sparkswitch rpm
 	sensor = system.getSensorValueByID(spswRpmSensor[1], spswRpmSensor[2])
     if(sensor and sensor.valid) then
-        spswRpm = sensor.value 
+        spswRpm = sensor.value
+	else
+		spswRpm = -1
     end
 	
-	-- pbs temperature
-	for i = 1, 5, 1 do
-		sensor = system.getSensorValueByID(pbsSensor[i][1], pbsSensor[i][2])
+	-- air pressure
+	if (airPressureEn) then
+		sensor = system.getSensorValueByID(airPressureSensor[1], airPressureSensor[2])
 		if(sensor and sensor.valid) then
-			pbsTempValue[i] = sensor.value
+			airPressure = sensor.value 
 		else
-			pbsTempValue[i] = 0
+			airPressure = -128
 		end
 	end
 	
-	-- air pressure
-	sensor = system.getSensorValueByID(airPressureSensor[1], airPressureSensor[2])
-	if(sensor and sensor.valid) then
-        airPressure = sensor.value 
-	else
-		airPressure = -1
+	-- pbs temperature
+	if (pbsEn) then
+		for i = 1, 5, 1 do
+			sensor = system.getSensorValueByID(pbsSensor[i][1], pbsSensor[i][2])
+			if(sensor and sensor.valid) then
+				pbsTempValue[i] = sensor.value
+				if (pbsTempValue[i] > pbsTempMaxValue[i]) then
+					pbsTempMaxValue[i] = pbsTempValue[i]
+				end
+			else
+				pbsTempValue[i] = -128
+			end
+		end
 	end
     
     if(volt1Reset == 1 and volt2Reset == 1)then
@@ -1029,8 +1101,10 @@ local function init(code1)
     spswBatType = system.pLoad("spswBatType", 0)
     spswBatCap = system.pLoad("spswBatCap", 0)
 	
+	pbsEn = system.pLoad("pbsEn", 0) == 1 and true or false
 	pbsSensor = system.pLoad("pbsSensor", {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}})
 	
+	airPressureEn = system.pLoad("airPressureEn", 0) == 1 and true or false
 	airPressureSensor = system.pLoad("airPressureSensor", {0, 0, 0})
 	airPressureWarnThreshold = system.pLoad("airPressureWarnTh", 0)
 	airPressureCriticalThreshold = system.pLoad("airPressureCritTh", 0)
@@ -1050,6 +1124,8 @@ local function init(code1)
     lastVolt2 = system.pLoad("lastVolt2",0)/10
     volt1Reset = system.pLoad("volt1Reset",0)
     volt2Reset = system.pLoad("volt2Reset",0)
+	
+	deviceType, isEmulator = system.getDeviceType()
 	
 	collectgarbage()
 end
