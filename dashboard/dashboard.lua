@@ -2,7 +2,7 @@
 collectgarbage()
 
 local appFileName = "dashboard"
-local appVersion = "1.0"
+local appVersion = "1.1"
 
 local isEmulator = false
 
