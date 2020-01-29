@@ -2,9 +2,9 @@
 collectgarbage()
 
 local appFileName = "dashboard"
-local appVersion = "1.1"
+local appVersion = "1.2"
 
-local isEmulator = false
+local isEmulator = 0
 
 local deviceType
 
@@ -261,7 +261,7 @@ local function rxBox(x, y)
 	local txtYOffset = 20
 	local txtYOffsetInc = 12
 	
-	if (isEmulator) then
+	if (isEmulator ~= 0) then
 		txTelemetry.rx1Voltage = 5.5
 		txTelemetry.rx1Percent = 98
 		txTelemetry.RSSI[1] = 30
@@ -320,7 +320,7 @@ end
 
 local function engineBox(x, y)
 	
-	if (isEmulator) then
+	if (isEmulator ~= 0) then
 		spswVoltage = 7.2
 		spswCurrent = 0.12
 		spswCapacity = 1300
@@ -399,7 +399,7 @@ local function airPressureBox(x, y, sizeX, sizeY)
 	-- draw title box
 	lcd.drawText(x + 6, y + (sizeY - lcd.getTextHeight(FONT_NORMAL)) / 2, "Air Pressure", FONT_BOLD)
 	
-	if (isEmulator) then
+	if (isEmulator ~= 0) then
 		airPressure = 300
 		airPressureWarnThresholdPerCent = 80
 		airPressureCriticalThresholdPerCent = 50
@@ -424,7 +424,7 @@ local function pbsTempBox(x, y, sizeX, sizeY)
 	-- draw title box
 	lcd.drawText(x + 6, y, "PBS-T250", FONT_BOLD)
 	
-	if (isEmulator) then
+	if (isEmulator ~= 0) then
 		pbsTempValue = {80, 90, 100, 92, 110}
 		pbsTempMaxValue = {150, 140, 120, 160, 115}
 	end
@@ -434,7 +434,11 @@ local function pbsTempBox(x, y, sizeX, sizeY)
 	
 	for i = 1, 5, 1 do
 		if (pbsTempValue[i] ~= -128) then
-			lcd.drawText(txtXOffset, txtYOffset, string.format("%d°C", pbsTempMaxValue[i]), FONT_MINI)
+			if (pbsTempMaxValue[i] ~= -128) then
+				lcd.drawText(txtXOffset, txtYOffset, string.format("%d°C", pbsTempMaxValue[i]), FONT_MINI)
+			else
+				lcd.drawText(txtXOffset, txtYOffset, "---°C", FONT_MINI)
+			end
 			lcd.drawText(txtXOffset, txtYOffset + lcd.getTextHeight(FONT_MINI), string.format("%d°C", pbsTempValue[i]))
 			txtXOffset = txtXOffset + lcd.getTextWidth(FONT_NORMAL, "XXXXX°C")
 		end
@@ -717,8 +721,7 @@ local function configForm2()
 			pbsSensor[i][1] = sensorsAvailable[value].id
 			pbsSensor[i][2] = sensorsAvailable[value].param
 			pbsSensor[i][3] = value
-			print(string.format("pbsSensor[%d]: %d", i, pbsSensor[i]))
-			system.pSave("pbsSensor", pbsSensor)
+			system.pSave("pbsSensor"..i, pbsSensor[i])
 			end)
 		end
 	end
@@ -1011,16 +1014,24 @@ local function loop()
 	
 	-- sparkswitch temperature
 	sensor = system.getSensorValueByID(spswTempSensor[1], spswTempSensor[2])
-    if(sensor and sensor.valid) then
-        spswTemp = sensor.value
+    if(sensor) then
+		if (sensor.valid) then
+			spswTemp = sensor.value
+		else
+			spswTemp = 0
+		end
 	else
 		spswTemp = -128
     end
 	
 	-- sparkswitch rpm
 	sensor = system.getSensorValueByID(spswRpmSensor[1], spswRpmSensor[2])
-    if(sensor and sensor.valid) then
-        spswRpm = sensor.value
+    if(sensor) then
+		if (sensor.valid) then
+			spswRpm = sensor.value
+		else
+			spswRpm = 0
+		end
 	else
 		spswRpm = -1
     end
@@ -1028,8 +1039,12 @@ local function loop()
 	-- air pressure
 	if (airPressureEn) then
 		sensor = system.getSensorValueByID(airPressureSensor[1], airPressureSensor[2])
-		if(sensor and sensor.valid) then
-			airPressure = sensor.value 
+		if(sensor) then
+			if (sensor.valid) then
+				airPressure = sensor.value
+			else
+				airPressure = 0
+			end
 		else
 			airPressure = -128
 		end
@@ -1039,32 +1054,20 @@ local function loop()
 	if (pbsEn) then
 		for i = 1, 5, 1 do
 			sensor = system.getSensorValueByID(pbsSensor[i][1], pbsSensor[i][2])
-			if(sensor and sensor.valid) then
-				pbsTempValue[i] = sensor.value
-				if (pbsTempValue[i] > pbsTempMaxValue[i]) then
-					pbsTempMaxValue[i] = pbsTempValue[i]
+			if (sensor) then
+				if (sensor.valid) then
+					pbsTempValue[i] = sensor.value
+					if (pbsTempValue[i] > pbsTempMaxValue[i]) then
+						pbsTempMaxValue[i] = pbsTempValue[i]
+					end
+				else
+					pbsTempValue[i] = 0
 				end
 			else
 				pbsTempValue[i] = -128
 			end
 		end
 	end
-    
-    if(volt1Reset == 1 and volt2Reset == 1)then
-        -- reset CB
-        print("Reset")
-        system.setControl(1, 1, 0)
-        volt1Reset = 0
-        volt2Reset = 0
-        system.pSave("lastVolt1", cbVoltage[1] * 10)
-        system.pSave("lastVolt2", cbVoltage[2] * 10)
-    else
-        system.setControl(1, -1, 0)
-    end
-    
-    system.pSave("volt1Reset",volt1Reset)
-    system.pSave("volt2Reset",volt2Reset)
-    
 end
 
 -- Application initialization
@@ -1088,6 +1091,7 @@ local function init(code1)
 	
 	timerSecInitialValue = system.pLoad("timerSecInitialValue", 0)
 	timerMinInitialValue = system.pLoad("timerMinInitialValue", 10)
+	time = timerMinInitialValue * 60 + timerSecInitialValue
 	timerStartSwitch = system.pLoad("timerStartSwitch")
 	timerResetSwitch = system.pLoad("timerResetSwitch")
 	
@@ -1102,7 +1106,9 @@ local function init(code1)
     spswBatCap = system.pLoad("spswBatCap", 0)
 	
 	pbsEn = system.pLoad("pbsEn", 0) == 1 and true or false
-	pbsSensor = system.pLoad("pbsSensor", {{0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}, {0, 0, 0}})
+	for i = 1, 5, 1 do
+		pbsSensor[i] = system.pLoad("pbsSensor"..i, {0, 0, 0})
+	end
 	
 	airPressureEn = system.pLoad("airPressureEn", 0) == 1 and true or false
 	airPressureSensor = system.pLoad("airPressureSensor", {0, 0, 0})
@@ -1116,14 +1122,6 @@ local function init(code1)
     system.registerForm(1, MENU_MAIN, lang.appName, initForm, keyPressed)
     system.registerTelemetry(1, model.." "..lang.appName.." 1", 4, telemetryForm1)
 	system.registerTelemetry(2, model.." "..lang.appName.." 2", 4, telemetryForm2)
-    
-    -- init CB reset
-    system.registerControl(1,"DashboardReset", "dbReset")
-    system.setControl(1,-1,0)
-    lastVolt1 = system.pLoad("lastVolt1",0)/10
-    lastVolt2 = system.pLoad("lastVolt2",0)/10
-    volt1Reset = system.pLoad("volt1Reset",0)
-    volt2Reset = system.pLoad("volt2Reset",0)
 	
 	deviceType, isEmulator = system.getDeviceType()
 	
