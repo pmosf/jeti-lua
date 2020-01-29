@@ -683,7 +683,7 @@ local function configForm2()
 		spswRpmSensor[1] = sensorsAvailable[value].id
 		spswRpmSensor[2] = sensorsAvailable[value].param
 		spswRpmSensor[3] = value
-		system.pSave("spswVoltageSensor", spswRpmSensor)
+		system.pSave("spswRpmSensor", spswRpmSensor)
 		end)
 		
 	-- temperature
